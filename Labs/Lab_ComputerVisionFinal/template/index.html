@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Vision | AI Operations</title>
+    <style>
+        /* CSS Reset e Variáveis */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        
+        body { 
+            background-color: #0f172a; 
+            color: #e2e8f0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            padding: 20px; 
+        }
+
+        /* Container Principal */
+        .dashboard { 
+            background: #1e293b; 
+            border: 1px solid #334155; 
+            border-radius: 16px; 
+            padding: 32px; 
+            width: 100%; 
+            max-width: 850px; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
+        }
+
+        /* Cabeçalho */
+        header { border-bottom: 1px solid #334155; padding-bottom: 16px; margin-bottom: 24px; }
+        h1 { font-size: 1.8rem; font-weight: 600; color: #f8fafc; }
+        h1 span { color: #3b82f6; }
+        p.subtitle { color: #94a3b8; font-size: 0.95rem; margin-top: 5px; }
+
+        /* Layout em Grid (2 Colunas) */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+
+        /* Área de Upload e Preview */
+        .upload-section { display: flex; flex-direction: column; gap: 15px; }
+        
+        .upload-area { 
+            border: 2px dashed #475569; 
+            border-radius: 12px; 
+            padding: 30px 20px; 
+            text-align: center; 
+            transition: all 0.3s ease; 
+            cursor: pointer; 
+            position: relative; 
+            background: #0f172a50;
+        }
+        .upload-area:hover { border-color: #3b82f6; background: #1e293b; }
+        .upload-area input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .upload-area h3 { color: #cbd5e1; font-size: 1.1rem; }
+        .upload-area p { color: #64748b; font-size: 0.85rem; margin-top: 5px; }
+        
+        #preview { 
+            max-width: 100%; 
+            border-radius: 8px; 
+            display: none; 
+            border: 1px solid #334155;
+        }
+
+        /* Botão de Ação */
+        .btn { 
+            background: #2563eb; 
+            color: white; 
+            border: none; 
+            padding: 14px; 
+            border-radius: 8px; 
+            font-weight: 600; 
+            font-size: 1rem; 
+            cursor: pointer; 
+            transition: background 0.2s, transform 0.1s; 
+            width: 100%;
+        }
+        .btn:hover { background: #1d4ed8; }
+        .btn:active { transform: scale(0.98); }
+
+        /* Painel de Resultados */
+        .results-panel { 
+            background: #0f172a; 
+            border-radius: 12px; 
+            padding: 24px; 
+            border: 1px solid #334155; 
+        }
+        .results-panel h3 { color: #f1f5f9; font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        
+        .tags-container { display: flex; flex-wrap: wrap; gap: 10px; }
+        
+        .badge { 
+            background: #1e3a8a30; 
+            border: 1px solid #3b82f650; 
+            color: #93c5fd; 
+            padding: 6px 14px; 
+            border-radius: 999px; 
+            font-size: 0.85rem; 
+            font-weight: 500; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .badge .conf { background: #1e3a8a; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; color: #bfdbfe; }
+
+        /* Loader */
+        .loader { display: none; color: #3b82f6; font-size: 0.95rem; font-weight: 500; animation: pulse 1.5s infinite; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <header>
+            <h1>☁️ Azure <span>Vision API</span></h1>
+            <p class="subtitle">Módulo de Extração de Metadados e Classificação de Ativos</p>
+        </header>
+
+        <div class="grid">
+            <div class="upload-section">
+                <div class="upload-area">
+                    <input type="file" id="fotoInput" accept="image/*" onchange="mostrarPreview(this)">
+                    <h3>📁 Selecionar Arquivo</h3>
+                    <p>Arraste uma evidência ou clique para procurar (JPG, PNG)</p>
+                </div>
+                <img id="preview" alt="Preview da Imagem">
+                <button class="btn" onclick="enviarParaAPI()">Analisar Imagem</button>
+            </div>
+
+            <div class="results-panel">
+                <h3>Resultados da IA</h3>
+                <div id="loader" class="loader">Processando no Data Center...</div>
+                <div id="resultados" class="tags-container">
+                    <p style="color: #64748b; font-size: 0.9rem;">Aguardando submissão de arquivo...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Função para mostrar a foto na tela assim que o usuário seleciona
+        function mostrarPreview(input) {
+            const preview = document.getElementById('preview');
+            const divResultados = document.getElementById('resultados');
+            
+            if (input.files && input.files[0]) {
+                const leitor = new FileReader();
+                leitor.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                leitor.readAsDataURL(input.files[0]);
+                
+                // Limpa os resultados antigos
+                divResultados.innerHTML = "";
+            }
+        }
+
+        // Função de Comunicação com o Back-End (Python)
+        async function enviarParaAPI() {
+            const input = document.getElementById('fotoInput');
+            const divResultados = document.getElementById('resultados');
+            const loader = document.getElementById('loader');
+
+            if (input.files.length === 0) {
+                alert("Operação negada: Nenhum arquivo selecionado.");
+                return;
+            }
+
+            // Ativa o visual de carregamento
+            divResultados.innerHTML = "";
+            loader.style.display = "block";
+
+            const formData = new FormData();
+            formData.append("arquivo", input.files[0]);
+
+            try {
+                // Acessa o motor do FastAPI rodando no VS Code
+                const resposta = await fetch("http://127.0.0.1:8000/analisar", {
+                    method: "POST",
+                    body: formData
+                });
+                
+                const json = await resposta.json();
+                loader.style.display = "none";
+
+                // Renderiza os dados recebidos na interface
+                if (json.sucesso && json.dados.length > 0) {
+                    json.dados.forEach(tag => {
+                        divResultados.innerHTML += `
+                            <div class="badge">
+                                ${tag.nome} <span class="conf">${tag.confianca}%</span>
+                            </div>`;
+                    });
+                } else if (json.sucesso && json.dados.length === 0) {
+                    divResultados.innerHTML = `<p style="color: #cbd5e1;">Nenhuma tag relevante encontrada.</p>`;
+                } else {
+                    divResultados.innerHTML = `<p style="color: #ef4444;">Erro da API: ${json.erro}</p>`;
+                }
+            } catch (erro) {
+                loader.style.display = "none";
+                divResultados.innerHTML = `<p style="color: #ef4444;">Erro de Conexão: O servidor FastAPI está ligado no terminal?</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

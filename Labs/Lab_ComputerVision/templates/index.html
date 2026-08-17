@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Vision | Análise de Imagem</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #F9FAFB;
+            --bg-card: #FFFFFF;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --border-color: #E5E7EB;
+            --primary: #2563EB;
+            --primary-hover: #1D4ED8;
+            --cyan-indicator: #06b6d4;
+            --magenta-indicator: #d946ef;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.025em;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 960px;
+        }
+
+        /* Card de Upload Limpo */
+        .upload-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            margin-bottom: 32px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .upload-area {
+            border: 2px dashed #D1D5DB;
+            border-radius: 8px;
+            padding: 40px 20px;
+            margin-bottom: 24px;
+            background-color: #F9FAFB;
+            transition: border-color 0.2s;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            background: #FFFFFF;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            transition: background 0.2s;
+        }
+
+        .file-label:hover {
+            background: #F3F4F6;
+        }
+
+        #file-name {
+            display: block;
+            margin-top: 12px;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        button.btn-submit {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            font-family: inherit;
+            font-weight: 500;
+            font-size: 0.875rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        button.btn-submit:hover {
+            background: var(--primary-hover);
+        }
+
+        /* Layout de Resultados */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        @media (min-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1.2fr 0.8fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin: 0 0 20px 0;
+            color: var(--text-main);
+        }
+
+        /* Imagem */
+        .image-wrapper img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            display: block;
+            border: 1px solid var(--border-color);
+        }
+
+        .legend {
+            margin-top: 16px;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 16px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot.cyan { background-color: var(--cyan-indicator); }
+        .dot.magenta { background-color: var(--magenta-indicator); }
+
+        /* Dados */
+        .metric-group {
+            margin-bottom: 24px;
+        }
+
+        .metric-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: var(--text-main);
+            background: #F9FAFB;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            background: #ECFDF5;
+            color: #059669;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: 1px solid #A7F3D0;
+        }
+
+        .tags-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag {
+            background: #EFF6FF;
+            color: #1D4ED8;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: 1px solid #BFDBFE;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Análise Visual AI</h1>
+        <p class="subtitle">Identificação de objetos e contexto via Azure Cognitive Services</p>
+    </div>
+
+    <div class="container">
+        
+        <form action="/" method="POST" enctype="multipart/form-data" class="upload-card">
+            <div class="upload-area">
+                <label class="file-label" for="file-upload">
+                    Selecionar Imagem
+                </label>
+                <input id="file-upload" type="file" name="foto" accept="image/*" required onchange="updateFileName(this)">
+                <span id="file-name">Nenhum arquivo selecionado</span>
+            </div>
+            <button type="submit" class="btn-submit">Processar Imagem</button>
+        </form>
+
+        {% if imagem_exibir %}
+        <div class="dashboard-grid">
+            
+            <div class="card">
+                <h2 class="card-title">Captura Processada</h2>
+                <div class="image-wrapper">
+                    <img src="/{{ imagem_exibir }}?v={{ v }}" alt="Resultado Azure">
+                </div>
+                <div class="legend">
+                    <div class="legend-item"><span class="dot cyan"></span> Objetos</div>
+                    <div class="legend-item"><span class="dot magenta"></span> Pessoas</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Resultados da Análise</h2>
+                
+                <div class="metric-group">
+                    <div class="metric-label">Descrição Gerada</div>
+                    <div class="metric-value">"{{ analise.legenda }}"</div>
+                </div>
+
+                <div class="metric-group">
+                    <div class="metric-label">Grau de Confiança</div>
+                    <div class="confidence-badge">{{ analise.confianca }}</div>
+                </div>
+
+                <div class="metric-group">
+                    <div class="metric-label">Tags Identificadas</div>
+                    <div class="tags-wrapper">
+                        {% for tag in analise.tags %}
+                            <span class="tag">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <script>
+        function updateFileName(input) {
+            const fileNameDisplay = document.getElementById('file-name');
+            if (input.files.length > 0) {
+                fileNameDisplay.textContent = input.files[0].name;
+            } else {
+                fileNameDisplay.textContent = 'Nenhum arquivo selecionado';
+            }
+        }
+    </script>
+</body>
+</html>

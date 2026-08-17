@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoria de Recibos</title>
+    
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: #101010;
+            --primary: #d40000;
+            --primary-hover: #a00000;
+            --text: #ffffff;
+            --text-light: #c0c0c0;
+            --border: #303030;
+            --success: #d40000;
+            --input-bg: #1a1a1a;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 4px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 2px var(--border);
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid var(--border);
+        }
+
+        h2 {
+            margin-top: 0;
+            color: var(--primary);
+            text-align: center;
+            border-bottom: 3px solid var(--border);
+            padding-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 24px;
+            font-weight: 800;
+        }
+
+        .upload-section {
+            margin: 25px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .upload-section label {
+            color: var(--text-light);
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        input[type="file"] {
+            border: 3px dashed var(--border);
+            padding: 20px;
+            border-radius: 2px;
+            cursor: pointer;
+            background-color: var(--input-bg);
+            color: var(--text-light);
+            transition: all 0.3s ease;
+        }
+
+        input[type="file"]:hover {
+            border-color: var(--primary);
+            color: var(--text);
+            background-color: #222222;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 2px;
+            font-size: 18px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        button:disabled {
+            background-color: #404040;
+            color: #808080;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 15px 0;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
+        .result-card {
+            display: none;
+            margin-top: 25px;
+            padding: 25px;
+            border-left: 8px solid var(--primary);
+            background-color: #1a0101;
+            border-radius: 2px;
+            border-top: 1px solid rgba(212, 0, 0, 0.3);
+            border-right: 1px solid rgba(212, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(212, 0, 0, 0.3);
+        }
+
+        .result-item {
+            margin-bottom: 15px;
+            font-size: 16px;
+            border-bottom: 1px solid #3d0505;
+            padding-bottom: 10px;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .result-item strong {
+            color: var(--text-light);
+            display: inline-block;
+            width: 160px;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+
+        .result-item span {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .error-message {
+            display: none;
+            margin-top: 15px;
+            color: #ff3333;
+            background-color: #2a0000;
+            padding: 15px;
+            border-radius: 2px;
+            border-left: 8px solid #cc0000;
+            font-size: 14px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Auditoria de Recibo</h2>
+        
+        <form id="uploadForm" class="upload-section">
+            <label for="reciboFile">Selecione a imagem do recibo (.jpg, .png, etc):</label>
+            <input type="file" id="reciboFile" accept="image/*" required>
+            <button type="submit" id="btnEnviar">Enviar para Análise</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <span>⌛ Analisando documento...</span>
+        </div>
+
+        <div class="error-message" id="errorBox"></div>
+
+        <div class="result-card" id="resultBox">
+            <h3 style="margin-top:0; color: var(--primary); font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px;">Resultado da Extração</h3>
+            <div class="result-item"><strong>Fornecedor:</strong> <span id="resFornecedor">-</span></div>
+            <div class="result-item"><strong>Data da Compra:</strong> <span id="resData">-</span></div>
+            <div class="result-item"><strong>Total a Reembolsar:</strong> <span id="resTotal">-</span></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('reciboFile');
+            const btnEnviar = document.getElementById('btnEnviar');
+            const loading = document.getElementById('loading');
+            const resultBox = document.getElementById('resultBox');
+            const errorBox = document.getElementById('errorBox');
+
+            if (fileInput.files.length === 0) return;
+
+            btnEnviar.disabled = true;
+            loading.style.display = 'block';
+            resultBox.style.display = 'none';
+            errorBox.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/analisar', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || 'Erro interno na requisição.');
+                }
+
+                document.getElementById('resFornecedor').textContent = data.fornecedor;
+                document.getElementById('resData').textContent = data.data;
+                document.getElementById('resTotal').textContent = data.total;
+                
+                resultBox.style.display = 'block';
+
+            } catch (err) {
+                errorBox.textContent = `[ERRO]: ${err.message}`;
+                errorBox.style.display = 'block';
+            } finally {
+                btnEnviar.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

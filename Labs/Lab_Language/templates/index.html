@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Auditoria NLP - AI-102</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <section class="topo">
+        <span class="tag-contexto">AI-102 • Azure AI Language</span>
+        <h1>Sistema de Auditoria NLP</h1>
+        <p class="descricao">
+          Digite um texto para analisar idioma, sentimento, entidades,
+          frases-chave e possíveis dados pessoais identificáveis (PII).
+        </p>
+      </section>
+
+      <div class="campo-grupo">
+        <textarea
+          id="textoEntrada"
+          placeholder="Exemplo: João, gerente da Contoso, viajou para São Paulo em 10 de maio e enviou um e-mail para joao@email.com dizendo que ficou satisfeito com o projeto."
+        ></textarea>
+        <button id="botao" onclick="analisarTexto()">Analisar Texto</button>
+      </div>
+
+      <div id="status" class="status">
+        Processando dados na inteligência artificial da Azure...
+      </div>
+      <div id="erro" class="erro"></div>
+
+      <section id="resultados" class="resultados">
+        <div class="card">
+          <h2>Idioma detectado</h2>
+          <div id="idioma" class="valor-principal">-</div>
+          <p id="idiomaDetalhe" class="detalhe-secundario">-</p>
+        </div>
+
+        <div class="card">
+          <h2>Sentimento</h2>
+          <div id="sentimento" class="valor-principal">-</div>
+          <p id="sentimentoDetalhe" class="detalhe-secundario">-</p>
+        </div>
+
+        <div class="card full">
+          <h2>Entidades nomeadas</h2>
+          <div id="entidades" class="lista-tags"></div>
+        </div>
+
+        <div class="card full">
+          <h2>Frases-chave</h2>
+          <div id="frases" class="lista-tags"></div>
+        </div>
+
+        <div class="card full">
+          <h2>PII detectado</h2>
+          <div id="pii" class="lista-tags"></div>
+        </div>
+
+        <div class="card full">
+          <h2>Texto com PII mascarado</h2>
+          <div id="textoMascarado" class="texto-mascarado">-</div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      function criarTag(texto) {
+        const span = document.createElement("span");
+        span.className = "item-tag";
+        span.textContent = texto;
+        return span;
+      }
+      function limparElemento(id) {
+        document.getElementById(id).innerHTML = "";
+      }
+      async function analisarTexto() {
+        const texto = document.getElementById("textoEntrada").value.trim();
+        const status = document.getElementById("status");
+        const erro = document.getElementById("erro");
+        const resultados = document.getElementById("resultados");
+        const botao = document.getElementById("botao");
+
+        erro.style.display = "none";
+        resultados.style.display = "none";
+
+        if (!texto) {
+          erro.textContent =
+            "Por favor, digite um texto válido antes de iniciar a análise.";
+          erro.style.display = "block";
+          return;
+        }
+
+        botao.disabled = true;
+        status.style.display = "block";
+
+        try {
+          const resposta = await fetch("/analisar", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ texto: texto }),
+          });
+
+          const dados = await resposta.json();
+
+          if (!resposta.ok) {
+            throw new Error(
+              dados.erro || "Ocorreu um erro inesperado ao processar o texto.",
+            );
+          }
+
+          document.getElementById("idioma").textContent = dados.idioma.nome;
+          document.getElementById("idiomaDetalhe").textContent =
+            `Código: ${dados.idioma.codigo} • Confiança: ${(dados.idioma.confianca * 100).toFixed(0)}%`;
+
+          document.getElementById("sentimento").textContent =
+            dados.sentimento.geral.toUpperCase();
+          document.getElementById("sentimentoDetalhe").textContent =
+            `Positivo: ${(dados.sentimento.positivo * 100).toFixed(0)}% • Neutro: ${(dados.sentimento.neutro * 100).toFixed(0)}% • Negativo: ${(dados.sentimento.negativo * 100).toFixed(0)}%`;
+
+          limparElemento("entidades");
+          if (dados.entidades.length === 0) {
+            document
+              .getElementById("entidades")
+              .appendChild(criarTag("Nenhuma entidade encontrada"));
+          } else {
+            dados.entidades.forEach((entidade) => {
+              const subcategoria = entidade.subcategoria
+                ? `/${entidade.subcategoria}`
+                : "";
+              document
+                .getElementById("entidades")
+                .appendChild(
+                  criarTag(
+                    `${entidade.texto} (${entidade.categoria}${subcategoria})`,
+                  ),
+                );
+            });
+          }
+
+          limparElemento("frases");
+          if (dados.frases_chave.length === 0) {
+            document
+              .getElementById("frases")
+              .appendChild(criarTag("Nenhuma frase-chave encontrada"));
+          } else {
+            dados.frases_chave.forEach((frase) => {
+              document.getElementById("frases").appendChild(criarTag(frase));
+            });
+          }
+
+          limparElemento("pii");
+          if (dados.pii.length === 0) {
+            document
+              .getElementById("pii")
+              .appendChild(criarTag("Nenhum dado sensível (PII) identificado"));
+          } else {
+            dados.pii.forEach((item) => {
+              const subcategoria = item.subcategoria
+                ? `/${item.subcategoria}`
+                : "";
+              document
+                .getElementById("pii")
+                .appendChild(
+                  criarTag(`${item.texto} • ${item.categoria}${subcategoria}`),
+                );
+            });
+          }
+
+          document.getElementById("textoMascarado").textContent =
+            dados.texto_mascarado;
+          resultados.style.display = "grid";
+        } catch (e) {
+          erro.textContent = e.message;
+          erro.style.display = "block";
+        } finally {
+          status.style.display = "none";
+          botao.disabled = false;
+        }
+      }
+    </script>
+  </body>
+</html>
